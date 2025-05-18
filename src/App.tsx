@@ -9,26 +9,29 @@ import GradeHistory from './components/GradeHistory';
 import SemesterComparison from './components/SemesterComparison';
 import Auth from './components/Auth';
 
-// Main app content that uses auth context
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isGuest } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-8">
-        {isAuthenticated ? (
+        {isAuthenticated || isGuest ? (
           <>
             <GradeCalculator />
-            <GradeHistory />
-            <SemesterComparison />
+            {isAuthenticated && (
+              <>
+                <GradeHistory />
+                <SemesterComparison />
+              </>
+            )}
           </>
         ) : (
           <div className="max-w-md mx-auto">
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-md">
               <p className="text-blue-800">
-                Inicia sesión o regístrate para calcular y guardar tus notas universitarias
+                Inicia sesión para guardar tus notas y compararlas entre semestres, o continúa sin cuenta para usar la calculadora.
               </p>
             </div>
             <Auth />
@@ -42,7 +45,6 @@ const AppContent: React.FC = () => {
   );
 };
 
-// Wrap the app with the auth provider
 function App() {
   return (
     <AuthProvider>
