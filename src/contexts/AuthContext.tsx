@@ -1,19 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isGuest: boolean;
-}
+import { AuthState, User } from '../types';
+import { getCurrentUser, setCurrentUser, clearCurrentUser, findUserByUsername, saveUser } from '../utils/storage';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<{ error: any }>;
-  register: (email: string, password: string) => Promise<{ error: any }>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
-  continueAsGuest: () => void;
+  login: (username: string, password: string) => boolean;
+  register: (username: string, password: string) => boolean;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,68 +14,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
-    isGuest: false,
   });
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check if user is already logged in
+    const user = getCurrentUser();
+    if (user) {
       setAuthState({
-        user: session?.user || null,
-        isAuthenticated: !!session,
-        isGuest: false,
+        user,
+        isAuthenticated: true,
       });
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthState({
-        user: session?.user || null,
-        isAuthenticated: !!session,
-        isGuest: false,
-      });
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+  const login = (username: string, password: string): boolean => {
+    const user = findUserByUsername(username);
+    if (user && user.password === password) {
+      setCurrentUser(user);
+      setAuthState({
+        user,
+        isAuthenticated: true,
+      });
+      return true;
+    }
+    return false;
   };
 
-  const register = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
+  const register = (username: string, password: string): boolean => {
+    // Check if username already exists
+    if (findUserByUsername(username)) {
+      return false;
+    }
+
+    // Create new user
+    const newUser: User = {
+      id: crypto.randomUUID(),
+      username,
       password,
+    };
+
+    saveUser(newUser);
+    setCurrentUser(newUser);
+    setAuthState({
+      user: newUser,
+      isAuthenticated: true,
     });
-    return { error };
+    return true;
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
+    clearCurrentUser();
     setAuthState({
       user: null,
       isAuthenticated: false,
-      isGuest: false,
-    });
-  };
-
-  const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error };
-  };
-
-  const continueAsGuest = () => {
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isGuest: true,
     });
   };
 
@@ -94,8 +77,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         logout,
-        resetPassword,
-        continueAsGuest,
       }}
     >
       {children}
