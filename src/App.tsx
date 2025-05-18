@@ -1,4 +1,5 @@
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
@@ -36,6 +37,7 @@ const AppContent: React.FC = () => {
       </main>
       
       <Footer />
+      <Analytics />
     </div>
   );
 };
