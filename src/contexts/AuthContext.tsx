@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthState, User } from '../types';
-import { getCurrentUser, setCurrentUser, clearCurrentUser, findUserByUsername, saveUser } from '../utils/storage';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => boolean;
-  register: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,57 +18,73 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   useEffect(() => {
-    // Check if user is already logged in
-    const user = getCurrentUser();
-    if (user) {
-      setAuthState({
-        user,
-        isAuthenticated: true,
-      });
-    }
+    // Check current session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setAuthState({
+          user: {
+            id: session.user.id,
+            email: session.user.email!
+          },
+          isAuthenticated: true,
+        });
+      } else {
+        setAuthState({
+          user: null,
+          isAuthenticated: false,
+        });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    const user = findUserByUsername(username);
-    if (user && user.password === password) {
-      setCurrentUser(user);
-      setAuthState({
-        user,
-        isAuthenticated: true,
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      return true;
-    }
-    return false;
-  };
-
-  const register = (username: string, password: string): boolean => {
-    // Check if username already exists
-    if (findUserByUsername(username)) {
+      
+      return !error;
+    } catch (error) {
+      console.error('Error during login:', error);
       return false;
     }
-
-    // Create new user
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      username,
-      password,
-    };
-
-    saveUser(newUser);
-    setCurrentUser(newUser);
-    setAuthState({
-      user: newUser,
-      isAuthenticated: true,
-    });
-    return true;
   };
 
-  const logout = () => {
-    clearCurrentUser();
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
+  const register = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      return !error;
+    } catch (error) {
+      console.error('Error during registration:', error);
+      return false;
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<void> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
+    
+    if (error) {
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (
@@ -76,6 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...authState,
         login,
         register,
+        resetPassword,
         logout,
       }}
     >
