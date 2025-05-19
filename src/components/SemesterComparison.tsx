@@ -80,16 +80,16 @@ const SemesterComparison: React.FC = () => {
                 Semestre
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Asignaturas
+                Total
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Aprobadas
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Difíciles
+                Reprobadas
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Prom. Req.
+                Nota Req.
               </th>
             </tr>
           </thead>
@@ -103,18 +103,34 @@ const SemesterComparison: React.FC = () => {
                   <div className="text-sm text-gray-900">{stat.courseCount}</div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <div className="text-sm text-green-600 font-medium">
-                    {stat.passedCount} ({Math.round((stat.passedCount / stat.courseCount) * 100)}%)
+                  <div className="text-sm text-green-600 font-medium flex items-center">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs mr-2">
+                      {stat.passedCount}
+                    </span>
+                    <span>
+                      {Math.round((stat.passedCount / stat.courseCount) * 100)}%
+                    </span>
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <div className="text-sm text-red-600 font-medium">
-                    {stat.failedCount} ({Math.round((stat.failedCount / stat.courseCount) * 100)}%)
+                  <div className="text-sm text-red-600 font-medium flex items-center">
+                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs mr-2">
+                      {stat.failedCount}
+                    </span>
+                    <span>
+                      {Math.round((stat.failedCount / stat.courseCount) * 100)}%
+                    </span>
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="text-sm text-blue-600 font-medium">
-                    {stat.averageRequired.toFixed(2)}
+                    {stat.averageRequired > 0 ? (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {stat.averageRequired.toFixed(2)}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
                   </div>
                 </td>
               </tr>
